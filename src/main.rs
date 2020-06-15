@@ -10,7 +10,7 @@ struct WordCounter {
     file: String,
     data: HashMap<String, u64>,
     lc: u64,
-    words: u64,
+    wc: u64,
 }
 
 impl WordCounter {
@@ -19,7 +19,7 @@ impl WordCounter {
             file: file,
             data: HashMap::new(),
             lc: 0,
-            words: 0,
+            wc: 0,
         }
     }
 
@@ -42,17 +42,21 @@ impl WordCounter {
                 }
             }
         }
-        self.words = self.data.values().cloned().fold(0_u64, |a, b| a + b);
+       self.words = self.data.values().cloned().fold(0_u64, |a, b| a + b);
     }
 
     fn display(&self) {
-        println!("{} words\n{} lines", self.words, self.lc);
+        println!("{} words\n{} lines", self.wc, self.lc);
     }
 }
 
 fn main() {
-    let arguments: Vec<String> = env::args().skip(1).collect();
-    let filename = &arguments[0];
+    let arguments: Vec<String> = env::args().collect();
+    if arguments.len() < 2 {
+        eprintln!("help:\n\twcr filename");
+        process::exit(1);
+    }
+    let filename = &arguments[1];
     let mut word_counter = WordCounter::new(filename.clone());
     println!("Processing file: {}", filename);
     word_counter.compute();
