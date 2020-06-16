@@ -1,22 +1,30 @@
+extern crate clap;
+
+use clap::{App, Arg};
 use std::collections::HashMap;
-use std::env;
+use std::fmt;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::process;
 
-#[derive(Debug)]
+struct Config {
+    input: String,
+    lc: bool,
+    wc: bool,
+}
+
 struct WordCounter {
-    file: String,
+    conf: Config,
     data: HashMap<String, u64>,
     lc: u64,
     wc: u64,
 }
 
 impl WordCounter {
-    fn new(file: String) -> WordCounter {
+    fn new(conf: Config) -> Self {
         WordCounter {
-            file: file,
+            conf: conf,
             data: HashMap::new(),
             lc: 0,
             wc: 0,
@@ -24,15 +32,30 @@ impl WordCounter {
     }
 
     fn compute(&mut self) {
-        let file = File::open(self.file.clone()).unwrap_or_else(|_| {
+        let file = File::open(self.conf.input.clone()).unwrap_or_else(|_| {
             eprintln!("Could not open file");
             process::exit(1);
         });
-        let reader: Vec<Result<String, _>> = BufReader::new(file).lines().collect();
+        let reader: Vec<String> = BufReader::new(file)
+            .lines()
+            .map(|x| x.unwrap_or("".to_string()))
+            .collect();
+        if self.conf.lc {
+            self.compute_lc(&reader);
+        }
+
+        if self.conf.wc {
+            self.compute_wc(&reader);
+        }
+    }
+
+    fn compute_lc(&mut self, reader: &Vec<String>) {
         self.lc = reader.len() as u64;
-        for line in reader {
-            let line = line.unwrap_or("".to_string());
-            let words = line.split(" ");
+    }
+
+    fn compute_wc(&mut self, reader: &Vec<String>) {
+        for l in reader {
+            let words = l.split(" ");
             for word in words {
                 if word == "" {
                     continue;
@@ -42,23 +65,57 @@ impl WordCounter {
                 }
             }
         }
-       self.words = self.data.values().cloned().fold(0_u64, |a, b| a + b);
+        self.wc = self.data.values().cloned().fold(0_u64, |a, b| a + b);
     }
+}
 
-    fn display(&self) {
-        println!("{} words\n{} lines", self.wc, self.lc);
+impl fmt::Display for WordCounter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (self.conf.lc, self.conf.wc) {
+            (true, false) => write!(f, "{} lines", self.lc),
+            (false, true) => write!(f, "{} words", self.wc),
+            (true, true) => write!(f, "{} lines\n{} words", self.lc, self.wc),
+            (false, false) => write!(f, "OMG :/"),
+        }
     }
 }
 
 fn main() {
-    let arguments: Vec<String> = env::args().collect();
-    if arguments.len() < 2 {
-        eprintln!("help:\n\twcr filename");
-        process::exit(1);
-    }
-    let filename = &arguments[1];
-    let mut word_counter = WordCounter::new(filename.clone());
-    println!("Processing file: {}", filename);
+    let matches = App::new("wcr")
+        .version("0.1")
+        .author("sina <sina.carbon12@gmail.com>")
+        .about("wcr is very very simple word counter")
+        .arg(
+            Arg::with_name("lc")
+                .short("l")
+                .help("print the newline counts")
+                .takes_value(false),
+        )
+        .arg(
+            Arg::with_name("wc")
+                .short("w")
+                .help("print the word counts")
+                .takes_value(false),
+        )
+        .arg(
+            Arg::with_name("INPUT")
+                .help("sets the input file to use")
+                .required(true),
+        )
+        .get_matches();
+
+    let config = Config {
+        input: matches.value_of("INPUT").unwrap().to_string(),
+        lc: matches.is_present("lc"),
+        wc: matches.is_present("wc")
+            | if matches.is_present("lc") {
+                false
+            } else {
+                true
+            },
+    };
+
+    let mut word_counter = WordCounter::new(config);
     word_counter.compute();
-    word_counter.display();
+    println!("{}", word_counter);
 }
