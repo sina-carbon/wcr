@@ -14,15 +14,15 @@ struct Config {
     wc: bool,
 }
 
-struct WordCounter {
-    conf: Config,
+struct WordCounter<'a> {
+    conf: &'a Config,
     data: HashMap<String, u64>,
     lc: u64,
     wc: u64,
 }
 
-impl WordCounter {
-    fn new(conf: Config) -> Self {
+impl<'a> WordCounter<'a> {
+    fn new(conf: &'a Config) -> Self {
         WordCounter {
             conf: conf,
             data: HashMap::new(),
@@ -32,7 +32,7 @@ impl WordCounter {
     }
 
     fn compute(&mut self) {
-        let file = File::open(self.conf.input.clone()).unwrap_or_else(|_| {
+        let file = File::open(&self.conf.input).unwrap_or_else(|_| {
             eprintln!("Could not open file");
             process::exit(1);
         });
@@ -55,13 +55,11 @@ impl WordCounter {
 
     fn compute_wc(&mut self, reader: &Vec<String>) {
         for l in reader {
-            let words = l.split(" ");
-            for word in words {
+            for word in l.split(" ") {
                 if word == "" {
                     continue;
                 } else {
-                    let count = self.data.entry(word.to_string()).or_insert(0);
-                    *count += 1;
+                    *self.data.entry(word.to_string()).or_insert(0) += 1;
                 }
             }
         }
@@ -69,13 +67,13 @@ impl WordCounter {
     }
 }
 
-impl fmt::Display for WordCounter {
+impl fmt::Display for WordCounter<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match (self.conf.lc, self.conf.wc) {
             (true, false) => write!(f, "{} lines", self.lc),
             (false, true) => write!(f, "{} words", self.wc),
             (true, true) => write!(f, "{} lines\n{} words", self.lc, self.wc),
-            (false, false) => write!(f, "OMG :/"),
+            _ => write!(f, "OMG :/"),
         }
     }
 }
@@ -115,7 +113,7 @@ fn main() {
             },
     };
 
-    let mut word_counter = WordCounter::new(config);
+    let mut word_counter = WordCounter::new(&config);
     word_counter.compute();
     println!("{}", word_counter);
 }
