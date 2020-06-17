@@ -32,8 +32,12 @@ impl<'a> WordCounter<'a> {
             eprintln!("Could not open file");
             process::exit(1);
         });
+
         let mut data = String::new();
-        file.read_to_string(&mut data).unwrap();
+        file.read_to_string(&mut data).unwrap_or_else(|_| {
+            eprintln!("Could not read file");
+            process::exit(1);
+        });
 
         if self.conf.lc {
             self.lc = data.as_str().split('\n').count() as u64 - 1;
