@@ -1,11 +1,9 @@
 extern crate clap;
 
 use clap::{App, Arg};
-use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
-use std::io::BufRead;
-use std::io::BufReader;
+use std::io::Read;
 use std::process;
 
 struct Config {
@@ -16,7 +14,6 @@ struct Config {
 
 struct WordCounter<'a> {
     conf: &'a Config,
-    data: HashMap<String, u64>,
     lc: u64,
     wc: u64,
 }
@@ -25,45 +22,30 @@ impl<'a> WordCounter<'a> {
     fn new(conf: &'a Config) -> Self {
         WordCounter {
             conf: conf,
-            data: HashMap::new(),
             lc: 0,
             wc: 0,
         }
     }
 
     fn compute(&mut self) {
-        let file = File::open(&self.conf.input).unwrap_or_else(|_| {
+        let mut file = File::open(&self.conf.input).unwrap_or_else(|_| {
             eprintln!("Could not open file");
             process::exit(1);
         });
-        let reader: Vec<String> = BufReader::new(file)
-            .lines()
-            .map(|x| x.unwrap_or("".to_string()))
-            .collect();
+        let mut data = String::new();
+        file.read_to_string(&mut data).unwrap();
+
         if self.conf.lc {
-            self.compute_lc(&reader);
+            self.lc = data.as_str().split('\n').count() as u64 - 1;
         }
 
         if self.conf.wc {
-            self.compute_wc(&reader);
+            self.wc = data
+                .as_str()
+                .split(|c| c == ' ' || c == '\n')
+                .filter(|c| *c != "")
+                .count() as u64;
         }
-    }
-
-    fn compute_lc(&mut self, reader: &Vec<String>) {
-        self.lc = reader.len() as u64;
-    }
-
-    fn compute_wc(&mut self, reader: &Vec<String>) {
-        for l in reader {
-            for word in l.split(" ") {
-                if word == "" {
-                    continue;
-                } else {
-                    *self.data.entry(word.to_string()).or_insert(0) += 1;
-                }
-            }
-        }
-        self.wc = self.data.values().sum();
     }
 }
 
