@@ -63,7 +63,7 @@ impl<'a> WordCounter<'a> {
                 }
             }
         }
-        self.wc = self.data.values().cloned().fold(0_u64, |a, b| a + b);
+        self.wc = self.data.values().sum();
     }
 }
 
