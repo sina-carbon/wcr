@@ -40,12 +40,11 @@ impl<'a> WordCounter<'a> {
         });
 
         if self.conf.lc {
-            self.lc = data.as_str().split('\n').count() as u64 - 1;
+            self.lc = data.split('\n').count() as u64 - 1;
         }
 
         if self.conf.wc {
             self.wc = data
-                .as_str()
                 .split(|c| c == ' ' || c == '\n')
                 .filter(|c| *c != "")
                 .count() as u64;
